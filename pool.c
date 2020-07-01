@@ -38,6 +38,12 @@ Pool *pool_create(size_t n, size_t s) {
     .mem_end = p->mem + mem_size,
   };
 
+  // Allocate then free an object to seed the free list
+  PoolObject *po = (PoolObject *)p->mem;
+  p->highest = po;
+  po->next = NULL;
+  p->head = po;
+
   return p;
 }
 
@@ -54,14 +60,12 @@ void *pool_alloc(Pool *p) {
     // Allocate an object from the free list
     po = p->head;
     p->head = p->head->next;
-  } else if(p->highest == NULL) {
-    // We've never allocated anything before
-    po = (PoolObject *)p->mem;
-    p->highest = po;
   } else if((char *)(p->highest) + p->object_size < p->mem_end) {
+    // Allocate an object from the end of the block
     p->highest = (PoolObject *)((char *)p->highest + p->object_size);
     po = p->highest;
   } else {
+    // Out of memory
     return NULL;
   }
 
